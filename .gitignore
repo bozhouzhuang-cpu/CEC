@@ -19,5 +19,4 @@ geoCosiCorr3D/Lidar_results
 geoCosiCorr3D/Lidar_data
 geoCosiCorr3D.egg-info
 lib
-results
 *.so.10
