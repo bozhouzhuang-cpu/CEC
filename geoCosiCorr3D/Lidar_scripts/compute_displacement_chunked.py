@@ -25,9 +25,9 @@ except ImportError:
     GPU_AVAILABLE = False
 
 class LidarDisplacementChunked:
-    def __init__(self, use_gpu=True, max_points_per_chunk=5000000):  # 5M points per chunk
+    def __init__(self, use_gpu=True):  
         self.use_gpu = use_gpu and GPU_AVAILABLE
-        self.max_points_per_chunk = max_points_per_chunk
+        #self.max_points_per_chunk = max_points_per_chunk
         
         if self.use_gpu:
             print("Using GPU acceleration")
@@ -74,7 +74,29 @@ class LidarDisplacementChunked:
             min_coords = np.min(points, axis=0)
             normalized = points - min_coords
             return normalized, min_coords
+    
+    def create_grid(self, points1, points2, grid_size):
+        """Create 2D grid centers over XY (CPU-only; GPU-safe)."""
+        p1_min = np.min(points1[:, :2], axis=0)
+        p1_max = np.max(points1[:, :2], axis=0)
+        p2_min = np.min(points2[:, :2], axis=0)
+        p2_max = np.max(points2[:, :2], axis=0)
 
+        mins = np.minimum(p1_min, p2_min)
+        maxs = np.maximum(p1_max, p2_max)
+
+        spans = np.maximum(maxs - mins, np.array([grid_size, grid_size], dtype=np.float32))
+        nx, ny = np.ceil(spans / grid_size).astype(int)
+
+        xs = mins[0] + (np.arange(nx, dtype=np.float32) + 0.5) * grid_size
+        ys = mins[1] + (np.arange(ny, dtype=np.float32) + 0.5) * grid_size
+        X, Y = np.meshgrid(xs, ys, indexing='ij')
+        centers = np.stack((X, Y), axis=-1).reshape(-1, 2).astype(np.float32, copy=False)
+
+        print(f"Created grid with {centers.shape[0]} cells ({nx} x {ny})")
+        return centers
+
+    '''
     def create_grid(self, points1, points2, grid_size):
         """Create spatial grid for displacement computation."""
         # Don't combine - compute min/max separately to save memory
@@ -124,7 +146,7 @@ class LidarDisplacementChunked:
         print(f"Created grid with {len(grid_centers)} cells ({len(x_range)-1} x {len(y_range)-1})")
         return np.array(grid_centers)
 
-    '''
+    
     def create_grid(self, points1, points2, grid_size):
         """Create spatial grid for displacement computation."""
         # Combine points to get overall bounds
@@ -219,7 +241,7 @@ class LidarDisplacementChunked:
         print("=== LiDAR Displacement Vector Computation (Chunked) ===")
         print(f"\nProcessing: {os.path.basename(file1_path)} -> {os.path.basename(file2_path)}")
         print(f"Grid size: {grid_size}")
-        print(f"Max points per chunk: {self.max_points_per_chunk:,}")
+        #print(f"Max points per chunk: {self.max_points_per_chunk:,}")
         
         start_time = time.time()
         
@@ -315,18 +337,18 @@ def main():
     """Main function to run displacement computation."""
     
     # Initialize processor with smaller chunks for memory efficiency
-    processor = LidarDisplacementChunked(use_gpu=True, max_points_per_chunk=50000000)  # 3M points
+    processor = LidarDisplacementChunked(use_gpu=True)  # 3M points
     
     # File paths
     base_path = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_Data"
-    file1 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2014.pcd")
-    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2016.pcd")
+    file1 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2016.pcd")
+    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2018.pcd")
     
     # Compute displacement vectors
     results = processor.compute_displacement_vectors(
         file1, file2, 
         grid_size=4,  # Larger grid for faster processing
-        output_suffix='_2014to2016'
+        output_suffix='full_points_2016to2018'
     )
     
     if results:
