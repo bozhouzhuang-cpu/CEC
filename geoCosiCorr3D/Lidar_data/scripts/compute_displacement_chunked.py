@@ -87,7 +87,7 @@ class LidarDisplacementChunked:
             min_coords = np.min(points, axis=0)
             normalized = points - min_coords
             return normalized, min_coords
-    
+    '''   
     def create_grid(self, points1, points2, grid_size):
         """Create spatial grid for displacement computation."""
         # Combine points to get overall bounds
@@ -116,7 +116,28 @@ class LidarDisplacementChunked:
         
         print(f"Created grid with {len(grid_centers)} cells ({len(x_range)-1} x {len(y_range)-1})")
         return np.array(grid_centers)
-    
+    '''
+    def create_grid(self, points1, points2, grid_size):
+        """Create spatial grid centers for displacement computation (GPU-safe)."""
+        if self.use_gpu:
+            p1_gpu, p2_gpu = cp.asarray(points1), cp.asarray(points2)
+            min_coords = cp.asnumpy(cp.minimum(cp.min(p1_gpu, axis=0), cp.min(p2_gpu, axis=0)))
+            max_coords = cp.asnumpy(cp.maximum(cp.max(p1_gpu, axis=0), cp.max(p2_gpu, axis=0)))
+        else:
+            min_coords = np.minimum(np.min(points1, axis=0), np.min(points2, axis=0))
+            max_coords = np.maximum(np.max(points1, axis=0), np.max(points2, axis=0))
+
+        
+        x_range = np.arange(min_coords[0], max_coords[0] + grid_size, grid_size)
+        y_range = np.arange(min_coords[1], max_coords[1] + grid_size, grid_size)
+        #z_range = np.arange(min_coords[2], max_coords[2] + grid_size, grid_size)
+
+        
+        X, Y= np.meshgrid(x_range, y_range, indexing='ij')
+        grid_centers = np.stack((X, Y), axis=-1).reshape(-1, 2)
+        return grid_centers
+
+
     def filter_points_in_grid(self, points, grid_center, grid_size):
         """Filter points within a grid cell."""
         half_size = grid_size / 2
@@ -275,18 +296,18 @@ def main():
     """Main function to run displacement computation."""
     
     # Initialize processor with smaller chunks for memory efficiency
-    processor = LidarDisplacementChunked(use_gpu=True, max_points_per_chunk=50000000)  # 3M points
+    processor = LidarDisplacementChunked(use_gpu=True, max_points_per_chunk=30000000)  # 3M points
     
     # File paths
-    base_path = "/home/bozhouzh/Geospatial-COSICorr3D/geoCosiCorr3D/Lidar_data/Site1"
+    base_path = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_Data"
     file1 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2016.pcd")
-    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2019.pcd")
+    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2018.pcd")
     
     # Compute displacement vectors
     results = processor.compute_displacement_vectors(
         file1, file2, 
-        grid_size=4,  # Larger grid for faster processing
-        output_suffix='_chunked_2016to2019'
+        grid_size=5,  # Larger grid for faster processing
+        output_suffix='_chunked_2016to2018'
     )
     
     if results:
