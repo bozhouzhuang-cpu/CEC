@@ -87,35 +87,7 @@ class LidarDisplacementChunked:
             min_coords = np.min(points, axis=0)
             normalized = points - min_coords
             return normalized, min_coords
-    '''   
-    def create_grid(self, points1, points2, grid_size):
-        """Create spatial grid for displacement computation."""
-        # Combine points to get overall bounds
-        all_points = np.vstack([points1, points2])
-        
-        if self.use_gpu:
-            all_points_gpu = cp.asarray(all_points)
-            min_coords = cp.min(all_points_gpu, axis=0)
-            max_coords = cp.max(all_points_gpu, axis=0)
-            min_coords = cp.asnumpy(min_coords)
-            max_coords = cp.asnumpy(max_coords)
-        else:
-            min_coords = np.min(all_points, axis=0)
-            max_coords = np.max(all_points, axis=0)
-        
-        # Create grid
-        x_range = np.arange(min_coords[0], max_coords[0] + grid_size, grid_size)
-        y_range = np.arange(min_coords[1], max_coords[1] + grid_size, grid_size)
-        
-        grid_centers = []
-        for x in x_range[:-1]:  # Exclude last to avoid edge effects
-            for y in y_range[:-1]:
-                center_x = x + grid_size / 2
-                center_y = y + grid_size / 2
-                grid_centers.append([center_x, center_y])
-        
-        print(f"Created grid with {len(grid_centers)} cells ({len(x_range)-1} x {len(y_range)-1})")
-        return np.array(grid_centers)
+   
     '''
     def create_grid(self, points1, points2, grid_size):
         """Create spatial grid centers for displacement computation (GPU-safe)."""
@@ -135,8 +107,29 @@ class LidarDisplacementChunked:
         
         X, Y= np.meshgrid(x_range, y_range, indexing='ij')
         grid_centers = np.stack((X, Y), axis=-1).reshape(-1, 2)
+        print(f"Created grid with {len(grid_centers)} cells ({len(x_range)-1} x {len(y_range)-1})")
         return grid_centers
+    '''
+    def create_grid(self, points1, points2, grid_size):
+        """Create 2D grid centers over XY (CPU-only; GPU-safe)."""
+        p1_min = np.min(points1[:, :2], axis=0)
+        p1_max = np.max(points1[:, :2], axis=0)
+        p2_min = np.min(points2[:, :2], axis=0)
+        p2_max = np.max(points2[:, :2], axis=0)
 
+        mins = np.minimum(p1_min, p2_min)
+        maxs = np.maximum(p1_max, p2_max)
+
+        spans = np.maximum(maxs - mins, np.array([grid_size, grid_size], dtype=np.float32))
+        nx, ny = np.ceil(spans / grid_size).astype(int)
+
+        xs = mins[0] + (np.arange(nx, dtype=np.float32) + 0.5) * grid_size
+        ys = mins[1] + (np.arange(ny, dtype=np.float32) + 0.5) * grid_size
+        X, Y = np.meshgrid(xs, ys, indexing='ij')
+        centers = np.stack((X, Y), axis=-1).reshape(-1, 2).astype(np.float32, copy=False)
+
+        print(f"Created grid with {centers.shape[0]} cells ({nx} x {ny})")
+        return centers
 
     def filter_points_in_grid(self, points, grid_center, grid_size):
         """Filter points within a grid cell."""
@@ -283,7 +276,7 @@ class LidarDisplacementChunked:
         print(f"  Processing time: {results['processing_time']:.1f} seconds")
         
         # Save results
-        output_dir = "/home/bozhouzh/Geospatial-COSICorr3D/geoCosiCorr3D/Lidar_results/Site1"
+        output_dir = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_results"
         os.makedirs(output_dir, exist_ok=True)
         
         output_file = os.path.join(output_dir, f"displacement_results_{output_suffix}.npz")
@@ -296,7 +289,7 @@ def main():
     """Main function to run displacement computation."""
     
     # Initialize processor with smaller chunks for memory efficiency
-    processor = LidarDisplacementChunked(use_gpu=True, max_points_per_chunk=30000000)  # 3M points
+    processor = LidarDisplacementChunked(use_gpu=True, max_points_per_chunk=200000000)  # 3M points
     
     # File paths
     base_path = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_Data"
@@ -306,7 +299,7 @@ def main():
     # Compute displacement vectors
     results = processor.compute_displacement_vectors(
         file1, file2, 
-        grid_size=5,  # Larger grid for faster processing
+        grid_size=3,  # Larger grid for faster processing
         output_suffix='_chunked_2016to2018'
     )
     
