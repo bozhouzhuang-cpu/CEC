@@ -97,8 +97,11 @@ def create_regular_grid(grid_centers, displacements, grid_size):
             grid_dz[yi, xi] = disp_z[i]
     
     # Create extent for imshow (normalized to start from 0,0)
-    extent_width = x_max - x_min
-    extent_height = y_max - y_min
+    #extent_width = x_max - x_min
+    #extent_height = y_max - y_min
+
+    extent_width  = (x_max - x_min) + grid_size
+    extent_height = (y_max - y_min) + grid_size
     extent_normalized = (0, extent_width, 0, extent_height)
     
     print(f"Plot extent (meters): {extent_width:.1f} x {extent_height:.1f}")
