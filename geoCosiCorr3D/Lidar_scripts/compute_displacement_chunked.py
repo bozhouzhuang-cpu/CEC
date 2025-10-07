@@ -260,15 +260,15 @@ def main():
     processor = LidarDisplacementChunked(use_gpu=True)  # 3M points
     
     # File paths
-    base_path = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_Data"
-    file1 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2016.pcd")
-    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2018.pcd")
+    base_path = "/home/bozhouzh/CEC/CEC/geoCosiCorr3D/Lidar_Data/Site_1"
+    file1 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2018.pcd")
+    file2 = os.path.join(base_path, "upsampled_subset_ptCloud_site1_2019.pcd")
 
     # Compute displacement vectors
     results = processor.compute_displacement_vectors(
         file1, file2, 
         grid_size=3,  # Larger grid for faster processing
-        output_suffix='full_points_2016to2018'
+        output_suffix='_2018to2019'
     )
     
     if results:
