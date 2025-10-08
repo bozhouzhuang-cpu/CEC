@@ -168,6 +168,14 @@ class Correlate(RawCorrelation):
         self.ns_output = np.vstack(tuple(ns_array_list))
         self.snr_output = np.vstack(tuple(snr_array_list))
 
+        # ADD MEDIAN FILTER HERE:
+        from scipy.ndimage import median_filter
+
+        # Apply median filter to reduce noise
+        kernel_size = 3  # 3x3 median filter - adjust as needed
+        self.ew_output = median_filter(self.ew_output, size=kernel_size)
+        self.ns_output = median_filter(self.ns_output, size=kernel_size)
+
         if self.corr_engine.corr_params.grid == False:
             self.write_blank_pixels()
 
