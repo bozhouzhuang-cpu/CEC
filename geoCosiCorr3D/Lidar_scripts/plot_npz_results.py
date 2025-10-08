@@ -107,6 +107,9 @@ def create_regular_grid(grid_centers, displacements, grid_size):
     print(f"Plot extent (meters): {extent_width:.1f} x {extent_height:.1f}")
     print(f"Origin offset: X({x_min:.1f}), Y({y_min:.1f})")
     
+    extent_utm = [x_min, x_max, y_min, y_max]
+    print(f"Plot extent (UTM meters): X=[{x_min:.3f}, {x_max:.3f}], Y=[{y_min:.3f}, {y_max:.3f}]")
+
     return grid_dx, grid_dy, grid_dz, extent_normalized, (x_min, y_min)
 
 def apply_median_filter(grid_dx, grid_dy, grid_dz, filter_size):
@@ -243,13 +246,14 @@ def create_magnitude_plot(grid_dx, grid_dy, grid_dz, extent, origin_offset, outp
     print("Creating magnitude plot from filtered displacements...")
     
     # Compute total displacement magnitude grid from filtered components
-    mag_grid = np.sqrt(grid_dx**2 + grid_dy**2 + grid_dz**2)
-    
+    #mag_grid = np.sqrt(grid_dx**2 + grid_dy**2 + grid_dz**2)
+    mag_grid = np.sqrt(grid_dx**2 + grid_dy**2)
+
     fig, ax = plt.subplots(figsize=(8, 6))
     
     # Plot as image (like the displacement components)
     im = ax.imshow(mag_grid, origin='lower', extent=extent,
-                   cmap='viridis', vmin=0, vmax=5, interpolation='nearest')
+                   cmap='viridis', vmin=0, vmax=3, interpolation='nearest')
 
     ax.set_xlabel('Relative Easting (m)', fontsize=16)
     ax.set_ylabel('Relative Northing (m)', fontsize=16)
